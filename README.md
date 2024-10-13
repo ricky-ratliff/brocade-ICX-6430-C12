@@ -1,5 +1,7 @@
 # Brocade ICX 6430-C12 Configuration & Documentation
 
+This repo contains coniguration notes and documentation for the Brocade ICX 6430-C12 I have deployed in my homelab.
+
 ## Management Interfaces
 
 ### Console Managment Interface
@@ -79,9 +81,142 @@ After some research, I learned that the magic number is used to validate the Mas
 
 ## Software Recovery Process
 
-I followed the software recovery process found on page 40 of the **FastIron Ethernet Switch Software Upgrade Guide, 08.0.30d**, which I downloaded from the Ruckus ICX 6430 and 6450 Campus Switches product page on the [Ruckus Support Website](https://support.ruckuswireless.com/products/121-ruckus-icx-6430-and-6450-campus-switches?open=document#sort=relevancy&f:@source=[Documentation]&f:@commonproducts=[ICX-6430-6450]).
+I followed the software recovery process found on page 40 of the [FastIron Ethernet Switch Software Upgrade Guide, 08.0.30d](./brocade%20documentation/fastiron-08030d-upgradeguide.pdf), which I downloaded from the **Ruckus ICX 6430 and 6450 Campus Switches** product page on the [Ruckus Support Website](https://support.ruckuswireless.com/products/121-ruckus-icx-6430-and-6450-campus-switches?open=document#sort=relevancy&f:@source=[Documentation]&f:@commonproducts=[ICX-6430-6450]).
 
-### TFTPD64 Log
+### Software recovery on ICX 6430, ICX 6450, ICX 6650, ICX 7450, ICX 7750, and FSX devices
+
+*NOTE In practice, the TFTP server is also used as the terminal server to see the CLI output.*
+
+1. Connect a console cable from the console port to the terminal server.
+2. Connect an Ethernet cable from the management port (the port located under the console port on the device) to the TFTP
+server.
+3. On the TFTP server, assign an IP address to the connected NIC; for example, IP address 10.10.10.21 mask 255.255.255.0.
+4. Reboot the device, and go to the boot monitor mode by pressing "b".
+5. When in boot mode, enter the printenv command to display details of the images available on the device memory; for example:
+
+```shell
+ICX64XX-boot> printenv
+baudrate=9600
+uboot=/foundry/FGS/bootcode/kxz07400.bin
+ver=07.4.00T310 (Mar 1 2012 - 11:28:23)
+```
+
+6. Provide the IP address of the TFTP server that hosts a valid software image using the setenv serverip command; for example:
+ICX64XX-boot> setenv serverip 10.10.10.21
+7. Set the IP address, gateway IP address, and netmask for the device management port, and save the configuration using the
+setenv ipaddr, setenv gatewayip, setenv netmask, and saveenv commands; for example:
+
+```shell
+ICX64XX-boot> setenv ipaddr 10.10.10.22
+ICX64XX-boot> setenv gatewayip 10.10.10.1
+ICX64XX-boot> setenv netmask 255.255.255.0
+ICX64XX-boot> saveenv
+```
+
+*NOTE The IP address and the gateway IP address set for the device management port should be for the same subnet as the TFTP server NIC.*
+
+8. Enter the printenv command to verify the IP addresses that you configured for the device and the TFTP server; for example:
+
+```shell
+ICX64XX-boot> printenv
+baudrate=9600
+ipaddr=10.10.10.22
+gatewayip=10.10.10.1
+netmask=255.255.255.0
+serverip=10.10.10.1
+uboot=/foundry/FGS/bootcode/kxz07400.bin
+ver=07.4.00T310 (Mar 1 2012 - 11:28:23)
+```
+
+9. Test the connectivity to the TFTP server from the device using the ping command to ensure a working connection; for example:
+
+```shell
+ICX64XX-boot> ping 10.10.10.21
+ethPortNo = 0
+Using egiga0 device
+host 10.10.10.21 is alive
+```
+
+10.  Provide the file name of the image that you want to copy from the TFTP server using the setenv image_name command; for
+example:
+`ICX64XX-boot> setenv image_name images/ICX/ICX64R08000.bin`
+11.  Update the primary flash using the update_primary command; for example:
+
+```shell
+ICX64XX-boot> update_primary
+ethPortNo = 0
+Using egiga0 device
+TFTP from server 10.10.10.21; our IP address is 10.10.10.22
+Download Filename 'ICX64S07400.bin'.
+Load address: 0x3000000
+Download to address: 0x3000000
+Loading: %#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+#################################################################
+########################################################
+done
+Bytes transferred = 10360844 (9e180c hex)
+prot off f8100000 f907ffff
+................................................................................
+................................................................................
+................................................................................
+........
+Un-Protected 248 sectors
+erase f8100000 f907ffff
+.................................................
+.................................................................
+.................................................................
+.................................................................
+....
+Erased 248 sectors
+copying image to flash, it will take sometime...
+sflash write 3000000 100000 f80000
+TFTP to Flash Done.
+```
+
+12.  Load the image from the primary flash using the boot_primary command; for example:
+
+```shell
+ICX64XX-boot> boot_primary
+Booting image from Primary
+## Booting image at 00007fc0 ...
+Created: 2012-03-02 20:38:52 UTC
+Data Size: 10360268 Bytes = 9.9 MB
+Load Address: 00008000
+Entry Point: 00008000
+Verifying Checksum ... OK
+OK
+Starting kernel in BE mode ...
+Uncompressing Image.............................................................
+................................................................................
+................................................................................
+................................................................................
+................................................................................
+........................................... done, booting the kernel.
+Config partition mounted.
+```
+
+13.  Enter show flash and see the output to check whether the image copy process was successful.
+
+```shell
+ICX6430-C12-Switch# show flash
+Stack unit 1:
+  Compressed Pri Code size = 8563580, Version:08.0.30uT311 (ICX64S08030u.bin) [Primary]
+  Compressed Sec Code size = 8563580, Version:08.0.30uT311 (ICX64S08030u.bin) [Secondary]
+  Compressed Boot-Monitor Image size = 786944, Version:10.1.05T310
+  Code Flash Free Space = 6991872
+```
+
+14.  Copy the image from the primary to the secondary flash partition using the copy flash flash secondary command
+
+#### TFTPD64 Log
 
 ```text
 Connection received from 10.45.1.2 on port 2747 [11/10 14:35:41.934]
@@ -91,46 +226,54 @@ Using local port 51562 [11/10 14:35:41.949]
 <ICX64S08030u.bin>: sent 5834 blks, 8563580 bytes in 2 s. 0 blk resent [11/10 14:35:43.119]
 ```
 
-## Commands
+## Current Configurations
 
-```shell
-alias                        Display configured aliases
-boot                         Boot system from bootp/tftp server/flash image
-clear                        Clear table/statistics/keys
-clock                        Set clock
-configure                    Enter configuration mode
-copy                         Copy between flash, tftp, scp, config/code
-debug                        Enable debugging functions (see also 'undebug')
-disable                      Disable system monitoring
-dot1x                        802.1X
-downgrade_to                 downgrade to a version prior to 8.0
-enable                       Enable system monitoring
-erase                        Erase image/configuration from flash
-execute                      Execute commands in batch
-exit                         Exit Privileged mode
-inline                       Inline power (PoE) configuration/operation
-jitc                         JITC execution commands
-kill                         Kill active CLI session
-page-display                 Display data one page at a time
-phy                          PHY related commands
-ping                         Ping IP node
-port                         Port security command
-quit                         Exit to User level
-reload                       Halt and perform a warm restart
-remote-packet-capture        Info about remote packet capture utility
-show                         Display system information
-simulate-non-stacking-unit   Simulate the absence of the stacking PROM
-skip-page-display            Enable continuous display
-ssh                          SSH by name or IP address / hostkeys
-stop-traceroute              Stop TraceRoute operation
-supportsave                  support save related
-telnet                       Telnet by name or IP address
-temperature                  temperature sensor commands
-terminal                     display syslog
-trace-l2                     TraceRoute L2
-traceroute                   TraceRoute to IP node
-undebug                      Disable debugging functions (see also 'debug')
-verify                       Verify object contents
-whois                        WHOIS lookup
-write                        Write running configuration to flash or terminal
+### Startup Config
+``` shell
+ICX6430-C12 Switch(config)#write terminal
+
+Current configuration:
+!
+ver 08.0.30uT311
+!
+stack unit 1
+  module 1 icx6430c-12-port-management-module
+  module 2 icx6430c-copper-2port-2g-module
+  module 3 icx6430c-fiber-2port-2g-module
+!
+ip address 10.45.1.2 255.255.255.0
+no ip dhcp-client enable
+ip default-gateway 10.45.1.1
 ```
+
+### Running Config
+```shell
+ICX6430-C12-Switch# show running-config
+Current configuration:
+!
+ver 08.0.30uT311
+!
+stack unit 1
+  module 1 icx6430c-12-port-management-module
+  module 2 icx6430c-copper-2port-2g-module
+  module 3 icx6430c-fiber-2port-2g-module
+!
+hostname ICX6430-C12-Switch
+ip address 10.45.1.175 255.255.255.0 dynamic
+ip dns domain-list attlocal.net
+ip dns server-address 10.45.1.1
+ip default-gateway 10.45.1.1
+!
+end
+```
+### Flash
+```shell
+ICX6430-C12-Switch# show flash
+Stack unit 1:
+  Compressed Pri Code size = 8563580, Version:08.0.30uT311 (ICX64S08030u.bin)
+  Compressed Sec Code size = 8563580, Version:08.0.30uT311 (ICX64S08030u.bin)
+  Compressed Boot-Monitor Image size = 786944, Version:10.1.05T310
+  Code Flash Free Space = 6991872
+```
+
+Note: The ICX6430 only runs the limited Layer 2 OS image, so some commands in the ICX6xxx Config Guide will not work. For instance, the Default Route & DNS and the Inter-VLAN Routing sections are only for the Layer 3 OS. However, most other commands will work.
