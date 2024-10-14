@@ -1,6 +1,12 @@
-# ICX 6430-C12 Configure Commands
+# ICX 6430-C12 Commands
 
 Putting configure commands here for reference and note taking.
+
+## Notes
+
+The ICX6430 only runs the limited Layer 2 OS image, so some commands in the ICX6xxx Config Guide will not work. For instance, the Default Route & DNS and the Inter-VLAN Routing sections are only for the Layer 3 OS. However, most other commands will work.
+
+## Config Commands
 
 `ICX6430-C12-Switch#configure terminal `
 

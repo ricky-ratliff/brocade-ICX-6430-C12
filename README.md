@@ -226,29 +226,11 @@ Using local port 51562 [11/10 14:35:41.949]
 <ICX64S08030u.bin>: sent 5834 blks, 8563580 bytes in 2 s. 0 blk resent [11/10 14:35:43.119]
 ```
 
-## Current Configurations
-
-### Startup Config
-``` shell
-ICX6430-C12 Switch(config)#write terminal
-
-Current configuration:
-!
-ver 08.0.30uT311
-!
-stack unit 1
-  module 1 icx6430c-12-port-management-module
-  module 2 icx6430c-copper-2port-2g-module
-  module 3 icx6430c-fiber-2port-2g-module
-!
-ip address 10.45.1.2 255.255.255.0
-no ip dhcp-client enable
-ip default-gateway 10.45.1.1
-```
+## Current Switch Configurations
 
 ### Running Config
 ```shell
-ICX6430-C12-Switch# show running-config
+SSH@rknet-bro(config)#show running-config
 Current configuration:
 !
 ver 08.0.30uT311
@@ -257,14 +239,35 @@ stack unit 1
   module 1 icx6430c-12-port-management-module
   module 2 icx6430c-copper-2port-2g-module
   module 3 icx6430c-fiber-2port-2g-module
+  no legacy-inline-power
 !
-hostname ICX6430-C12-Switch
-ip address 10.45.1.175 255.255.255.0 dynamic
-ip dns domain-list attlocal.net
+aaa authentication web-server default local
+aaa authentication login default local
+enable aaa console
+hostname rknet-bro
+ip address 10.45.1.2 255.255.255.0
 ip dns server-address 10.45.1.1
+no ip dhcp-client enable
 ip default-gateway 10.45.1.1
 !
+no telnet server
+username root password .....
+!
+clock summer-time
+clock timezone gmt GMT-06
+!
+ntp
+ disable serve
+ server 216.239.35.0
+ server 216.239.35.4
+!
+web-management https
+!
+ip ssh  password-authentication no
+ip ssh  interactive-authentication no
+!
 end
+
 ```
 ### Flash
 ```shell
@@ -275,5 +278,3 @@ Stack unit 1:
   Compressed Boot-Monitor Image size = 786944, Version:10.1.05T310
   Code Flash Free Space = 6991872
 ```
-
-Note: The ICX6430 only runs the limited Layer 2 OS image, so some commands in the ICX6xxx Config Guide will not work. For instance, the Default Route & DNS and the Inter-VLAN Routing sections are only for the Layer 3 OS. However, most other commands will work.
