@@ -144,3 +144,17 @@ ICX6430-C12-Switch(config)# ?
   write                         Write running configuration to flash or terminal
   <cr>
 ```
+
+## SSH
+
+To display the currently loaded public keys, enter the following command.
+
+`device#show ip client-pub-key`
+
+**Syntax: show ip client-pub-key [ begin expression | exclude expression | include expression ]**
+
+To clear the public keys from the buffers, enter the following command.
+
+`device#clear public-key`
+
+**Syntax: clear public-key**

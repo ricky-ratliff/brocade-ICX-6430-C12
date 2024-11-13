@@ -2,6 +2,24 @@
 
 This repo contains coniguration notes and documentation for the Brocade ICX 6430-C12 I have deployed in my homelab.
 
+## Table of Contents
+
+- [Brocade ICX 6430-C12 Configuration \& Documentation](#brocade-icx-6430-c12-configuration--documentation)
+  - [Table of Contents](#table-of-contents)
+  - [Management Interfaces](#management-interfaces)
+    - [Console Managment Interface](#console-managment-interface)
+      - [OIKWAN USB to RJ45 Console Cable](#oikwan-usb-to-rj45-console-cable)
+    - [Out-of-Band Management Interface](#out-of-band-management-interface)
+    - [Web Management Interface](#web-management-interface)
+  - [Initial Configuration Troubleshooting](#initial-configuration-troubleshooting)
+  - [Software Recovery Process](#software-recovery-process)
+    - [Software recovery on ICX 6430, ICX 6450, ICX 6650, ICX 7450, ICX 7750, and FSX devices](#software-recovery-on-icx-6430-icx-6450-icx-6650-icx-7450-icx-7750-and-fsx-devices)
+      - [Windows PC TFTPd64 Logs](#windows-pc-tftpd64-logs)
+  - [Current Switch Configurations](#current-switch-configurations)
+    - [Boot Monitor](#boot-monitor)
+    - [Running Config](#running-config)
+
+
 ## Management Interfaces
 
 ### Console Managment Interface
@@ -11,17 +29,17 @@ This repo contains coniguration notes and documentation for the Brocade ICX 6430
 - Uses an FTDI FT232R chip
 - Virtual COM port (VCP) driver used to provide a COM port on the PC for serial terminal emulation access
 
-#### Out-of-Band Management Interface
+### Out-of-Band Management Interface
 
 | Internet Address | Physical Address  | Type    |
 | ---------------- | ----------------- | ------- |
 | 10.45.1.2        | 60:9c:9f:38:4b:c8 | dynamic |
 
-#### Web Management Interface
+### Web Management Interface
 
 | Internet Address | Physical Address  | Type    |
 | ---------------- | ----------------- | ------- |
-| Unknown          | 60:9c:9f:38:4b:b6 | dynamic |
+| -                | 60:9c:9f:38:4b:b6 | dynamic |
 
 ## Initial Configuration Troubleshooting
 
@@ -226,78 +244,6 @@ Using local port 51562 [11/10 14:35:41.949]
 <ICX64S08030u.bin>: sent 5834 blks, 8563580 bytes in 2 s. 0 blk resent [11/10 14:35:43.119]
 ```
 
-## Ubuntu 22.04 SSH Setup
-
-### Ubuntu ~/.ssh/config File
-```yaml
-Host <switch-ip>
-   IdentitiesOnly yes
-   IdentityFile ~/.ssh/private_key
-   KexAlgorithms +diffie-hellman-group1-sha1
-   PubkeyAcceptedKeyTypes=+ssh-rsa
-   HostKeyAlgorithms=+ssh-rsa
-```
-
-### Ubuntu tftpd-hpa config file
-```yaml
-# /etc/default/tftpd-hpa
-
-TFTP_USERNAME="tftpd-hpa"
-TFTP_DIRECTORY="/home/ricky/.ssh/"
-TFTP_ADDRESS="0.0.0.0:69"
-TFTP_OPTIONS="--secure -vvvv"
-```
-
-### Ubuntu SysLog Errors
-
-```shell
-ricky@rknixnova:~$ tail -F /var/log/syslog
-Oct 16 19:00:48 rknix-nova kernel: [40652.357182] [UFW BLOCK] IN=wlp0s20f3 OUT= MAC=bc:09:1b:05:fd:a7:60:9c:9f:38:4b:b6:08:00 SRC=10.45.1.2 DST=10.45.1.224 LEN=67 TOS=0x00 PREC=0x00 TTL=64 ID=61 DF PROTO=UDP SPT=1027 DPT=69 LEN=47 
-```
-
-### Switch Errors
-
-```shell
-rknet-bro(config)#TFTP: received error request -- code 0 message Permission denied
-SSH tftp client public key failed!
-```
-
-### Resolution
-
-Changed TFTP_USERNAME to "nobody" and restarted the tftpd-hpa server.
-
-```yaml
-# /etc/default/tftpd-hpa
-
-TFTP_USERNAME="nobody"
-TFTP_DIRECTORY="/home/ricky/.ssh/"
-TFTP_ADDRESS="0.0.0.0:69"
-TFTP_OPTIONS="--secure -vvvv"
-```
-
-Changed ~/.ssh directory permissions and invoked tail in follow mode on /var/log/syslog before attempting to download the public key over tftp on the switch again to monitor the attempt.
-
-```shell
-~$ chmod 777 ./.ssh
-
-Oct 16 21:31:36 rknix-nova in.tftpd[67453]: RRQ from 10.45.1.2 filename rknix@icx-6430-c12.pub
-
-rknet-bro(config)#ip ssh pub-key-file tftp 10.45.1.224 rknix@icx-6430-c12.pub
-downloading public key file, please wait...
-rknet-bro(config)#Public key written
-
-Finished downloading public key file!
-```
-I finalized the change on the switch by writing the config to memory with `write memory`.
-
-### Cleaning Up
-
-With the public key file now loaded on the switch, I needed to revert some changes to keep the systems secure.
-
-- Reset permissions on ~/.ssh directory `chmod 700 ~/.ssh`
-- Reset permissions on public key file `chmod 644 ~/.ssh/key-file.pub`
-- Re-enabled UFW `sudo ufw enable`
-- Disabled tftpd-hpa `sudo systemctl disable tftpd-hpa`
 
 ## Current Switch Configurations
 
